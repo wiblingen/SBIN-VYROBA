@@ -1,26 +1,30 @@
 #!/bin/bash
 #########################################################
 #                                                       #
-#              HostFilesUpdate.sh Updater               #
+#              HostFilesUpdate.sh                       #
 #                                                       #
-#      Written for Pi-Star (http://www.pistar.uk/)      #
-#               By Andy Taylor (MW0MWZ)                 #
-#                                                       #
-#                     Version 2.6                       #
-#                                                       #
-#   Based on the update script by Tony Corbett G0WFV    #
 #                                                       #
 #########################################################
 
 # Check that the network is UP and die if its not
 if [ "$(expr length `hostname -I | cut -d' ' -f1`x)" == "1" ]; then
-	exit 0
+	exit 1
 fi
 
-# Get the Pi-Star Version
-pistarCurVersion=$(awk -F "= " '/Version/ {print $2}' /etc/pistar-release)
+# Get the W0CHP-PiStar-Dash Version
+gitBranch=$(git --work-tree=/var/www/dashboard --git-dir=/var/www/dashboard/.git branch | grep '*' | cut -f2 -d ' ')
+dashVer=$( git --work-tree=/var/www/dashboard --git-dir=/var/www/dashboard/.git rev-parse --short=10 ${gitBranch} )
+psVer=$( grep Version /etc/pistar-release | awk '{print $3}' )
+hostFileURL=https://barrandovhblink.jednoduse.cz/dmrcz
+uuidStr=$(egrep 'UUID|ModemType|ModemMode|ControllerType' /etc/pistar-release | awk {'print $3'} | tac | xargs| sed 's/ /_/g')
+modelName=$(grep -m 1 'model name' /proc/cpuinfo | sed 's/.*: //')
+hardwareField=$(grep 'Model' /proc/cpuinfo | sed 's/.*: //')
+hwDeetz="${hardwareField} - ${modelName}"
+uaStr="WPSD-HostFileUpdater Ver.# ${psVer} ${dashVer} (${gitBranch}) UUID:${uuidStr} [${hwDeetz}]"
 
+# Files and locations
 APRSHOSTS=/usr/local/etc/APRSHosts.txt
+APRSSERVERS=/usr/local/etc/aprs_servers.json
 DCSHOSTS=/usr/local/etc/DCS_Hosts.txt
 DExtraHOSTS=/usr/local/etc/DExtra_Hosts.txt
 DMRIDFILE=/usr/local/etc/DMRIds.dat
@@ -34,11 +38,21 @@ XLXHOSTS=/usr/local/etc/XLXHosts.txt
 NXDNIDFILE=/usr/local/etc/NXDN.csv
 NXDNHOSTS=/usr/local/etc/NXDNHosts.txt
 TGLISTBM=/usr/local/etc/TGList_BM.txt
+TGLISTTGIF=/usr/local/etc/TGList_TGIF.txt
+TGLISTFREESTARIPSC2=/usr/local/etc/TGList_FreeStarIPSC.txt
+TGLISTSYSTEMX=/usr/local/etc/TGList_SystemX.txt
+TGLISTFREEDMR=/usr/local/etc/TGList_FreeDMR.txt
+TGLISTDMRPLUS=/usr/local/etc/TGList_DMRp.txt
 TGLISTP25=/usr/local/etc/TGList_P25.txt
 TGLISTNXDN=/usr/local/etc/TGList_NXDN.txt
 TGLISTYSF=/usr/local/etc/TGList_YSF.txt
+BMTGNAMES=/usr/local/etc/BM_TGs.json
+RADIOIDDB=/tmp/user.csv
+GROUPSTXT=/usr/local/etc/groups.txt
+STRIPPED=/usr/local/etc/stripped.csv
+COUNTRIES=/usr/local/etc/country.csv
 
-# How many backups
+# How many backups?
 FILEBACKUP=1
 
 # Check we are root
@@ -50,22 +64,30 @@ fi
 # Create backup of old files
 if [ ${FILEBACKUP} -ne 0 ]; then
 	cp ${APRSHOSTS} ${APRSHOSTS}.$(date +%Y%m%d)
-	cp ${DCSHOSTS} ${DCSHOSTS}.$(date +%Y%m%d)
-	cp ${DExtraHOSTS} ${DExtraHOSTS}.$(date +%Y%m%d)
-	cp ${DMRIDFILE} ${DMRIDFILE}.$(date +%Y%m%d)
-	cp ${DMRHOSTS} ${DMRHOSTS}.$(date +%Y%m%d)
-	cp ${DPlusHOSTS} ${DPlusHOSTS}.$(date +%Y%m%d)
-	cp ${P25HOSTS} ${P25HOSTS}.$(date +%Y%m%d)
-	cp ${M17HOSTS} ${M17HOSTS}.$(date +%Y%m%d)
-	cp ${YSFHOSTS} ${YSFHOSTS}.$(date +%Y%m%d)
-	cp ${FCSHOSTS} ${FCSHOSTS}.$(date +%Y%m%d)
-	cp ${XLXHOSTS} ${XLXHOSTS}.$(date +%Y%m%d)
-	cp ${NXDNIDFILE} ${NXDNIDFILE}.$(date +%Y%m%d)
-	cp ${NXDNHOSTS} ${NXDNHOSTS}.$(date +%Y%m%d)
-	cp ${TGLISTBM} ${TGLISTBM}.$(date +%Y%m%d)
-	cp ${TGLISTP25} ${TGLISTP25}.$(date +%Y%m%d)
-	cp ${TGLISTNXDN} ${TGLISTNXDN}.$(date +%Y%m%d)
-	cp ${TGLISTYSF} ${TGLISTYSF}.$(date +%Y%m%d)
+	cp  ${DCSHOSTS} ${DCSHOSTS}.$(date +%Y%m%d)
+	cp  ${DExtraHOSTS} ${DExtraHOSTS}.$(date +%Y%m%d)
+	cp  ${DMRIDFILE} ${DMRIDFILE}.$(date +%Y%m%d)
+	cp  ${DMRHOSTS} ${DMRHOSTS}.$(date +%Y%m%d)
+	cp  ${DPlusHOSTS} ${DPlusHOSTS}.$(date +%Y%m%d)
+	cp  ${P25HOSTS} ${P25HOSTS}.$(date +%Y%m%d)
+	cp  ${M17HOSTS} ${M17HOSTS}.$(date +%Y%m%d)
+	cp  ${YSFHOSTS} ${YSFHOSTS}.$(date +%Y%m%d)
+	cp  ${FCSHOSTS} ${FCSHOSTS}.$(date +%Y%m%d)
+	cp  ${XLXHOSTS} ${XLXHOSTS}.$(date +%Y%m%d)
+	cp  ${NXDNIDFILE} ${NXDNIDFILE}.$(date +%Y%m%d)
+	cp  ${NXDNHOSTS} ${NXDNHOSTS}.$(date +%Y%m%d)
+	cp  ${TGLISTBM} ${TGLISTBM}.$(date +%Y%m%d)
+	cp  ${TGLISTTGIF} ${TGLISTTGIF}.$(date +%Y%m%d)
+	cp  ${TGLISTFREESTARIPSC2} ${TGLISTFREESTARIPSC2}.$(date +%Y%m%d)
+	cp  ${TGLISTSYSTEMX} ${TGLISTSYSTEMX}.$(date +%Y%m%d)
+	cp  ${TGLISTFREEDMR} ${TGLISTFREEDMR}.$(date +%Y%m%d)
+	cp  ${TGLISTDMRPLUS} ${TGLISTDMRPLUS}.$(date +%Y%m%d)
+	cp  ${TGLISTP25} ${TGLISTP25}.$(date +%Y%m%d)
+	cp  ${TGLISTNXDN} ${TGLISTNXDN}.$(date +%Y%m%d)
+	cp  ${TGLISTYSF} ${TGLISTYSF}.$(date +%Y%m%d)
+	cp  ${BMTGNAMES} ${BMTGNAMES}.$(date +%Y%m%d)
+	cp  ${GROUPSTXT} ${GROUPSTXT}.$(date +%Y%m%d)
+	cp  ${STRIPPED} ${STRIPPED}.$(date +%Y%m%d)
 fi
 
 # Prune backups
@@ -83,9 +105,17 @@ ${XLXHOSTS}
 ${NXDNIDFILE}
 ${NXDNHOSTS}
 ${TGLISTBM}
+${TGLISTTGIF}
+${TGLISTFREESTARIPSC2}
+${TGLISTSYSTEMX}
+${TGLISTFREEDMR}
+${TGLISTDMRPLUS}
 ${TGLISTP25}
 ${TGLISTNXDN}
-${TGLISTYSF}"
+${TGLISTYSF}
+${BMTGNAMES}
+${GROUPSTXT}
+${STRIPPED}"
 
 for file in ${FILES}
 do
@@ -100,31 +130,48 @@ do
 done
 
 # Generate Host Files
-curl --fail -o ${APRSHOSTS} -s http://www.pistar.uk/downloads/APRS_Hosts.txt --user-agent "Pi-Star_${pistarCurVersion}"
-curl --fail -o ${DCSHOSTS} -s http://www.pistar.uk/downloads/DCS_Hosts.txt --user-agent "Pi-Star_${pistarCurVersion}"
-curl --fail -o ${DMRHOSTS} -s http://barrandovhblink.jednoduse.cz/dmrcz/DMR_Hosts.txt --user-agent "Pi-Star_${pistarCurVersion}"
+curl --fail -L -o ${APRSHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/APRS_Hosts.txt --user-agent "${uaStr}"
+curl --fail -L -o ${APRSSERVERS} -s https://barrandovhblink.jednoduse.cz/dmrcz/aprs_servers.json --user-agent "${uaStr}"
+curl --fail -L -o ${DCSHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/DCS_Hosts.txt --user-agent "${uaStr}"
+curl --fail -L -o ${DMRHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/DMR_Hosts.txt --user-agent "${uaStr}"
 if [ -f /etc/hostfiles.nodextra ]; then
   # Move XRFs to DPlus Protocol
-  curl --fail -o ${DPlusHOSTS} -s http://www.pistar.uk/downloads/DPlus_WithXRF_Hosts.txt --user-agent "Pi-Star_${pistarCurVersion}"
-  curl --fail -o ${DExtraHOSTS} -s http://www.pistar.uk/downloads/DExtra_NoXRF_Hosts.txt --user-agent "Pi-Star_${pistarCurVersion}"
+  curl --fail -L -o ${DPlusHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/DPlus_WithXRF_Hosts.txt --user-agent "${uaStr}"
+  curl --fail -L -o ${DExtraHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/DExtra_NoXRF_Hosts.txt --user-agent "${uaStr}"
 else
   # Normal Operation
-  curl --fail -o ${DPlusHOSTS} -s http://www.pistar.uk/downloads/DPlus_Hosts.txt --user-agent "Pi-Star_${pistarCurVersion}"
-  curl --fail -o ${DExtraHOSTS} -s http://www.pistar.uk/downloads/DExtra_Hosts.txt --user-agent "Pi-Star_${pistarCurVersion}"
+  curl --fail -L -o ${DPlusHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/DPlus_Hosts.txt --user-agent "${uaStr}"
+  curl --fail -L -o ${DExtraHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/DExtra_Hosts.txt --user-agent "${uaStr}"
 fi
-curl --fail -o ${DMRIDFILE} -s http://barrandovhblink.jednoduse.cz/dmrcz/DMRIds.dat --user-agent "Pi-Star_${pistarCurVersion}"
-curl --fail -o ${P25HOSTS} -s http://www.pistar.uk/downloads/P25_Hosts.txt --user-agent "Pi-Star_${pistarCurVersion}"
-curl --fail -o ${M17HOSTS} -s http://www.pistar.uk/downloads/M17_Hosts.txt --user-agent "Pi-Star_${pistarCurVersion}"
-curl --fail -o ${YSFHOSTS} -s http://www.pistar.jednoduse.cz/downloads/YSF_Hosts.txt --user-agent "Pi-Star_${pistarCurVersion}"
-curl --fail -o ${FCSHOSTS} -s http://www.pistar.uk/downloads/FCS_Hosts.txt --user-agent "Pi-Star_${pistarCurVersion}"
-#curl --fail -s http://www.pistar.uk/downloads/USTrust_Hosts.txt --user-agent "Pi-Star_${pistarCurVersion}" >> ${DExtraHOSTS}
-curl --fail -o ${XLXHOSTS} -s http://www.pistar.uk/downloads/XLXHosts.txt --user-agent "Pi-Star_${pistarCurVersion}"
-curl --fail -o ${NXDNIDFILE} -s http://www.pistar.uk/downloads/NXDN.csv --user-agent "Pi-Star_${pistarCurVersion}"
-curl --fail -o ${NXDNHOSTS} -s http://www.pistar.uk/downloads/NXDN_Hosts.txt --user-agent "Pi-Star_${pistarCurVersion}"
-curl --fail -o ${TGLISTBM} -s http://www.pistar.uk/downloads/TGList_BM.txt --user-agent "Pi-Star_${pistarCurVersion}"
-curl --fail -o ${TGLISTP25} -s http://www.pistar.uk/downloads/TGList_P25.txt --user-agent "Pi-Star_${pistarCurVersion}"
-curl --fail -o ${TGLISTNXDN} -s http://www.pistar.uk/downloads/TGList_NXDN.txt --user-agent "Pi-Star_${pistarCurVersion}"
-curl --fail -o ${TGLISTYSF} -s http://www.pistar.uk/downloads/TGList_YSF.txt --user-agent "Pi-Star_${pistarCurVersion}"
+
+# Grab DMR IDs but filter out IDs less than 7 digits (causing collisions with TGs of < 7 digits in "Target" column"
+curl --fail -L -o /tmp/DMRIds.tmp.bz2 -s https://barrandovhblink.jednoduse.cz/dmrcz/DMRIds.dat.bz2 --user-agent "${uaStr}"
+bunzip2 -f /tmp/DMRIds.tmp.bz2
+cat /tmp/DMRIds.tmp  2>/dev/null | grep -v '^#' | awk '($1 > 999999) && ($1 < 10000000) { print $0 }' | sort -un -k1n -o ${DMRIDFILE}
+rm -f /tmp/DMRIds.tmp
+
+curl --fail -L -o ${P25HOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/P25_Hosts.txt --user-agent "${uaStr}"
+curl --fail -L -o ${M17HOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/M17_Hosts.txt --user-agent "${uaStr}"
+curl --fail -L -o ${YSFHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/YSF_Hosts.txt --user-agent "${uaStr}"
+curl --fail -L -o ${FCSHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/FCS_Hosts.txt --user-agent "${uaStr}"
+#curl --fail -L -s https://barrandovhblink.jednoduse.cz/dmrcz/USTrust_Hosts.txt --user-agent "${uaStr}" >> ${DExtraHOSTS}
+curl --fail -L -o ${XLXHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/XLXHosts.txt --user-agent "${uaStr}"
+curl --fail -L -o ${NXDNIDFILE} -s https://barrandovhblink.jednoduse.cz/dmrcz/NXDN.csv --user-agent "${uaStr}"
+curl --fail -L -o ${NXDNHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/NXDN_Hosts.txt --user-agent "${uaStr}"
+curl --fail -L -o ${TGLISTBM} -s https://barrandovhblink.jednoduse.cz/dmrcz/TGList_BM.txt --user-agent "${uaStr}"
+curl --fail -L -o ${TGLISTTGIF} -s https://barrandovhblink.jednoduse.cz/dmrcz/TGList_TGIF.txt --user-agent "${uaStr}"
+curl --fail -L -o ${TGLISTFREESTARIPSC2} -s https://barrandovhblink.jednoduse.cz/dmrcz/TGList_FreeStarIPSC.txt --user-agent "${uaStr}"
+curl --fail -L -o ${TGLISTSYSTEMX} -s https://barrandovhblink.jednoduse.cz/dmrcz/TGList_SystemX.txt --user-agent "${uaStr}"
+curl --fail -L -o ${TGLISTFREEDMR} -s https://barrandovhblink.jednoduse.cz/dmrcz/TGList_FreeDMR.txt --user-agent "${uaStr}"
+curl --fail -L -o ${TGLISTDMRPLUS} -s https://barrandovhblink.jednoduse.cz/dmrcz/TGList_DMRp.txt --user-agent "${uaStr}"
+curl --fail -L -o ${TGLISTP25} -s https://barrandovhblink.jednoduse.cz/dmrcz/TGList_P25.txt --user-agent "${uaStr}"
+curl --fail -L -o ${TGLISTNXDN} -s https://barrandovhblink.jednoduse.cz/dmrcz/TGList_NXDN.txt --user-agent "${uaStr}"
+curl --fail -L -o ${TGLISTYSF} -s https://barrandovhblink.jednoduse.cz/dmrcz/TGList_YSF.txt --user-agent "${uaStr}"
+curl --fail -L -o ${COUNTRIES} -s https://barrandovhblink.jednoduse.cz/dmrcz/country.csv --user-agent "${uaStr}"
+curl --fail -L -o ${BMTGNAMES} -s https://barrandovhblink.jednoduse.cz/dmrcz/BM_TGs.json --user-agent "${uaStr}"
+
+# live caller and nextion screens:
+cp ${BMTGNAMES} ${GROUPSTXT}
 
 # If there is a DMR Over-ride file, add it's contents to DMR_Hosts.txt
 if [ -f "/root/DMR_Hosts.txt" ]; then
@@ -156,7 +203,7 @@ if [ -f "/root/M17Hosts.txt" ]; then
 	cat /root/M17Hosts.txt >> ${M17HOSTS}
 fi
 
-# Fix up new NXDNGateway Config Hostfile setup
+# Fix up new NXDNGateway Config HostFile setup
 if [[ $(/usr/local/bin/NXDNGateway --version | awk '{print $3}' | cut -c -8) -gt "20180801" ]]; then
 	sed -i 's/HostsFile=\/usr\/local\/etc\/NXDNHosts.txt/HostsFile1=\/usr\/local\/etc\/NXDNHosts.txt\nHostsFile2=\/usr\/local\/etc\/NXDNHostsLocal.txt/g' /etc/nxdngateway
 fi
@@ -172,7 +219,7 @@ if [ -f "/root/NXDNHosts.txt" ]; then
 	cat /root/NXDNHosts.txt > /usr/local/etc/NXDNHostsLocal.txt
 fi
 
-# If there is an XLX over-ride
+# If there is an XLX override
 if [ -f "/root/XLXHosts.txt" ]; then
         while IFS= read -r line; do
                 if [[ $line != \#* ]] && [[ $line = *";"* ]]
@@ -212,5 +259,12 @@ if [ -d "/usr/local/etc/ircddbgateway" ]; then
 		ln -s /usr/local/etc/CCS_Hosts.txt /usr/local/etc/ircddbgateway/CCS_Hosts.txt
 	fi
 fi
+
+# Nextion and LiveCaller DB's
+curl --fail -L -o ${RADIOIDDB}.bz2 -s https://barrandovhblink.jednoduse.cz/dmrcz/user.csv.bz2 --user-agent "${uaStr}"
+bunzip2 -f ${RADIOIDDB}.bz2
+# strip first line of DMRdb and cleanup
+sed -e '1d' < /tmp/user.csv > ${STRIPPED}
+mv ${RADIOIDDB} /usr/local/etc
 
 exit 0
