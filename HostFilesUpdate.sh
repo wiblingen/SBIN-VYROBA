@@ -1,14 +1,8 @@
 #!/bin/bash
 #########################################################
 #                                                       #
-#              HostFilesUpdate.sh Updater               #
+#              HostFilesUpdate.sh                       #
 #                                                       #
-#      Written for Pi-Star (http://www.pistar.uk/)      #
-#               By Andy Taylor (MW0MWZ)                 #
-#                  Enhanced by W0CHP                    #
-#                     Version 2.11                      #
-#                                                       #
-#   Based on the update script by Tony Corbett G0WFV    #
 #                                                       #
 #########################################################
 
@@ -21,7 +15,6 @@ fi
 gitBranch=$(git --work-tree=/var/www/dashboard --git-dir=/var/www/dashboard/.git branch | grep '*' | cut -f2 -d ' ')
 dashVer=$( git --work-tree=/var/www/dashboard --git-dir=/var/www/dashboard/.git rev-parse --short=10 ${gitBranch} )
 psVer=$( grep Version /etc/pistar-release | awk '{print $3}' )
-# hostFileURL=https://hostfiles.w0chp.net
 hostFileURL=https://barrandovhblink.jednoduse.cz/dmrcz
 uuidStr=$(egrep 'UUID|ModemType|ModemMode|ControllerType' /etc/pistar-release | awk {'print $3'} | tac | xargs| sed 's/ /_/g')
 modelName=$(grep -m 1 'model name' /proc/cpuinfo | sed 's/.*: //')
@@ -95,6 +88,7 @@ if [ ${FILEBACKUP} -ne 0 ]; then
 	cp  ${BMTGNAMES} ${BMTGNAMES}.$(date +%Y%m%d)
 	cp  ${GROUPSTXT} ${GROUPSTXT}.$(date +%Y%m%d)
 	cp  ${STRIPPED} ${STRIPPED}.$(date +%Y%m%d)
+	cp  ${COUNTRIES} ${COUNTRIES}.$(date +%Y%m%d)
 fi
 
 # Prune backups
@@ -122,6 +116,7 @@ ${TGLISTNXDN}
 ${TGLISTYSF}
 ${BMTGNAMES}
 ${GROUPSTXT}
+${COUNTRIES}
 ${STRIPPED}"
 
 for file in ${FILES}
@@ -137,54 +132,47 @@ do
 done
 
 # Generate Host Files
-curl --fail -L -o ${APRSHOSTS} -s ${hostFileURL}/APRS_Hosts.txt --user-agent "${uaStr}"
-curl --fail -L -o ${APRSSERVERS} -s ${hostFileURL}/aprs_servers.json --user-agent "${uaStr}"
-curl --fail -L -o ${DCSHOSTS} -s ${hostFileURL}/DCS_Hosts.txt --user-agent "${uaStr}"
-curl --fail -L -o ${DMRHOSTS} -s ${hostFileURL}/DMR_Hosts.txt --user-agent "${uaStr}"
+curl --fail -L -o ${APRSHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/APRS_Hosts.txt --user-agent "${uaStr}"
+curl --fail -L -o ${APRSSERVERS} -s https://barrandovhblink.jednoduse.cz/dmrcz/aprs_servers.json --user-agent "${uaStr}"
+curl --fail -L -o ${DCSHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/DCS_Hosts.txt --user-agent "${uaStr}"
+curl --fail -L -o ${DMRHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/DMR_Hosts.txt --user-agent "${uaStr}"
 if [ -f /etc/hostfiles.nodextra ]; then
   # Move XRFs to DPlus Protocol
-  curl --fail -L -o ${DPlusHOSTS} -s ${hostFileURL}/DPlus_WithXRF_Hosts.txt --user-agent "${uaStr}"
-  curl --fail -L -o ${DExtraHOSTS} -s ${hostFileURL}/DExtra_NoXRF_Hosts.txt --user-agent "${uaStr}"
+  curl --fail -L -o ${DPlusHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/DPlus_WithXRF_Hosts.txt --user-agent "${uaStr}"
+  curl --fail -L -o ${DExtraHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/DExtra_NoXRF_Hosts.txt --user-agent "${uaStr}"
 else
   # Normal Operation
-  curl --fail -L -o ${DPlusHOSTS} -s ${hostFileURL}/DPlus_Hosts.txt --user-agent "${uaStr}"
-  curl --fail -L -o ${DExtraHOSTS} -s ${hostFileURL}/DExtra_Hosts.txt --user-agent "${uaStr}"
+  curl --fail -L -o ${DPlusHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/DPlus_Hosts.txt --user-agent "${uaStr}"
+  curl --fail -L -o ${DExtraHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/DExtra_Hosts.txt --user-agent "${uaStr}"
 fi
 
-# Grab DMR IDs
-curl --fail -L -o /tmp/DMRIds.tmp.bz2 -s ${hostFileURL}/DMRIds.dat.bz2 --user-agent "${uaStr}"
+# Grab DMR IDs but filter out IDs less than 7 digits (causing collisions with TGs of < 7 digits in "Target" column"
+curl --fail -L -o /tmp/DMRIds.tmp.bz2 -s https://barrandovhblink.jednoduse.cz/dmrcz/DMRIds.dat.bz2 --user-agent "${uaStr}"
 bunzip2 -f /tmp/DMRIds.tmp.bz2
-# filter out IDs less than 7 digits (causing collisions with TGs of < 7 digits in "Target" column"
 cat /tmp/DMRIds.tmp  2>/dev/null | grep -v '^#' | awk '($1 > 999999) && ($1 < 10000000) { print $0 }' | sort -un -k1n -o ${DMRIDFILE}
 rm -f /tmp/DMRIds.tmp
-# radio ID DMR DB sanity checks
-NUMOFLINES=$(wc -l ${DMRIDFILE} | awk '{print $1}')
-if (( $NUMOFLINES < 230000 )) # revert file back to day before
-then
-    cp ${DMRIDFILE}.$(date +%Y%m%d) ${DMRIDFILE}
-fi
 
-curl --fail -L -o ${P25HOSTS} -s ${hostFileURL}/P25_Hosts.txt --user-agent "${uaStr}"
-curl --fail -L -o ${M17HOSTS} -s ${hostFileURL}/M17_Hosts.txt --user-agent "${uaStr}"
-curl --fail -L -o ${YSFHOSTS} -s ${hostFileURL}/YSF_Hosts.txt --user-agent "${uaStr}"
-curl --fail -L -o ${FCSHOSTS} -s ${hostFileURL}/FCS_Hosts.txt --user-agent "${uaStr}"
-#curl --fail -L -s ${hostFileURL}/USTrust_Hosts.txt --user-agent "${uaStr}" >> ${DExtraHOSTS}
-curl --fail -L -o ${XLXHOSTS} -s ${hostFileURL}/XLXHosts.txt --user-agent "${uaStr}"
-curl --fail -L -o ${NXDNIDFILE} -s ${hostFileURL}/NXDN.csv --user-agent "${uaStr}"
-curl --fail -L -o ${NXDNHOSTS} -s ${hostFileURL}/NXDN_Hosts.txt --user-agent "${uaStr}"
-curl --fail -L -o ${TGLISTBM} -s ${hostFileURL}/TGList_BM.txt --user-agent "${uaStr}"
-curl --fail -L -o ${TGLISTTGIF} -s ${hostFileURL}/TGList_TGIF.txt --user-agent "${uaStr}"
-curl --fail -L -o ${TGLISTFREESTARIPSC2} -s ${hostFileURL}/TGList_FreeStarIPSC.txt --user-agent "${uaStr}"
-curl --fail -L -o ${TGLISTSYSTEMX} -s ${hostFileURL}/TGList_SystemX.txt --user-agent "${uaStr}"
-curl --fail -L -o ${TGLISTFREEDMR} -s ${hostFileURL}/TGList_FreeDMR.txt --user-agent "${uaStr}"
-curl --fail -L -o ${TGLISTDMRPLUS} -s ${hostFileURL}/TGList_DMRp.txt --user-agent "${uaStr}"
-curl --fail -L -o ${TGLISTP25} -s ${hostFileURL}/TGList_P25.txt --user-agent "${uaStr}"
-curl --fail -L -o ${TGLISTNXDN} -s ${hostFileURL}/TGList_NXDN.txt --user-agent "${uaStr}"
-curl --fail -L -o ${TGLISTYSF} -s ${hostFileURL}/TGList_YSF.txt --user-agent "${uaStr}"
-curl --fail -L -o ${COUNTRIES} -s ${hostFileURL}/country.csv --user-agent "${uaStr}"
-curl --fail -L -o ${BMTGNAMES} -s ${hostFileURL}/BM_TGs.json --user-agent "${uaStr}"
+curl --fail -L -o ${P25HOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/P25_Hosts.txt --user-agent "${uaStr}"
+curl --fail -L -o ${M17HOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/M17_Hosts.txt --user-agent "${uaStr}"
+curl --fail -L -o ${YSFHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/YSF_Hosts.txt --user-agent "${uaStr}"
+curl --fail -L -o ${FCSHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/FCS_Hosts.txt --user-agent "${uaStr}"
+#curl --fail -L -s https://barrandovhblink.jednoduse.cz/dmrcz/USTrust_Hosts.txt --user-agent "${uaStr}" >> ${DExtraHOSTS}
+curl --fail -L -o ${XLXHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/XLXHosts.txt --user-agent "${uaStr}"
+curl --fail -L -o ${NXDNIDFILE} -s https://barrandovhblink.jednoduse.cz/dmrcz/NXDN.csv --user-agent "${uaStr}"
+curl --fail -L -o ${NXDNHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/NXDN_Hosts.txt --user-agent "${uaStr}"
+curl --fail -L -o ${TGLISTBM} -s https://barrandovhblink.jednoduse.cz/dmrcz/TGList_BM.txt --user-agent "${uaStr}"
+curl --fail -L -o ${TGLISTTGIF} -s https://barrandovhblink.jednoduse.cz/dmrcz/TGList_TGIF.txt --user-agent "${uaStr}"
+curl --fail -L -o ${TGLISTFREESTARIPSC2} -s https://barrandovhblink.jednoduse.cz/dmrcz/TGList_FreeStarIPSC.txt --user-agent "${uaStr}"
+curl --fail -L -o ${TGLISTSYSTEMX} -s https://barrandovhblink.jednoduse.cz/dmrcz/TGList_SystemX.txt --user-agent "${uaStr}"
+curl --fail -L -o ${TGLISTFREEDMR} -s https://barrandovhblink.jednoduse.cz/dmrcz/TGList_FreeDMR.txt --user-agent "${uaStr}"
+curl --fail -L -o ${TGLISTDMRPLUS} -s https://barrandovhblink.jednoduse.cz/dmrcz/TGList_DMRp.txt --user-agent "${uaStr}"
+curl --fail -L -o ${TGLISTP25} -s https://barrandovhblink.jednoduse.cz/dmrcz/TGList_P25.txt --user-agent "${uaStr}"
+curl --fail -L -o ${TGLISTNXDN} -s https://barrandovhblink.jednoduse.cz/dmrcz/TGList_NXDN.txt --user-agent "${uaStr}"
+curl --fail -L -o ${TGLISTYSF} -s https://barrandovhblink.jednoduse.cz/dmrcz/TGList_YSF.txt --user-agent "${uaStr}"
+curl --fail -L -o ${COUNTRIES} -s https://barrandovhblink.jednoduse.cz/dmrcz/country.csv --user-agent "${uaStr}"
+curl --fail -L -o ${BMTGNAMES} -s https://barrandovhblink.jednoduse.cz/dmrcz/BM_TGs.json --user-agent "${uaStr}"
 
-# BM TG List for live caller and nextion screens:
+# live caller and nextion screens:
 cp ${BMTGNAMES} ${GROUPSTXT}
 
 # If there is a DMR Over-ride file, add it's contents to DMR_Hosts.txt
@@ -274,14 +262,11 @@ if [ -d "/usr/local/etc/ircddbgateway" ]; then
 	fi
 fi
 
-# Nextion and LiveCaller DMR ID DB's
-curl --fail -L -o ${RADIOIDDB}.bz2 -s ${hostFileURL}/user.csv.bz2 --user-agent "${uaStr}"
+# Nextion and LiveCaller DB's
+curl --fail -L -o ${RADIOIDDB}.bz2 -s https://barrandovhblink.jednoduse.cz/dmrcz/user.csv.bz2 --user-agent "${uaStr}"
 bunzip2 -f ${RADIOIDDB}.bz2
-# sort
-cat /tmp/user.csv /tmp/stripped.csv 2>/dev/null | sort -un -k1n -o ${STRIPPED}
-# remove header
-sed -ie '1d' ${STRIPPED}
+# strip first line of DMRdb and cleanup
+sed -e '1d' < /tmp/user.csv > ${STRIPPED}
 mv ${RADIOIDDB} /usr/local/etc
 
 exit 0
-
