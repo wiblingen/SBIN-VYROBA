@@ -8,12 +8,12 @@ if [ "$(id -u)" != "0" ]; then
   exit 1
 fi
 
-source /usr/local/sbin/.wpsd-common-funcs
+source /usr/local/sbin/pistar-update
 
 sudo wpsd-services fullstop
 
 sudo rm -rf /usr/local/sbin
-sudo GIT_HTTP_CONNECT_TIMEOUT="10" GIT_HTTP_USER_AGENT="WPSD sbin reset (client-side)" git clone --depth 1 https://github.com/wiblingen/SBIN-SCRIPT-UPRAVA.git /usr/local/sbin
+sudo GIT_HTTP_CONNECT_TIMEOUT="10" GIT_HTTP_USER_AGENT="WPSD sbin reset (client-side)" git clone --depth 1 https://github.com/wiblingen/SBIN-VYROBA.git /usr/local/sbin
 
 sudo rm -rf /usr/local/bin
 sudo GIT_HTTP_CONNECT_TIMEOUT="10" GIT_HTTP_USER_AGENT="WPSD binary reset (client-side)" git clone --depth 1 https://github.com/wiblingen/BIN-UPRAVA.git /usr/local/bin
