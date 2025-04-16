@@ -145,7 +145,13 @@ else
   curl --fail -L -o ${DPlusHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/DPlus_Hosts.txt --user-agent "${uaStr}"
   curl --fail -L -o ${DExtraHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/DExtra_Hosts.txt --user-agent "${uaStr}"
 fi
-curl --fail -L -o ${DMRIDFILE} -s https://barrandovhblink.jednoduse.cz/dmrcz/DMRIds.dat --user-agent "${uaStr}"
+
+# Grab DMR IDs but filter out IDs less than 7 digits (causing collisions with TGs of < 7 digits in "Target" column"
+curl --fail -L -o /tmp/DMRIds.tmp.bz2 -s https://barrandovhblink.jednoduse.cz/dmrcz/DMRIds.dat.bz2 --user-agent "${uaStr}"
+bunzip2 -f /tmp/DMRIds.tmp.bz2
+cat /tmp/DMRIds.tmp  2>/dev/null | grep -v '^#' | awk '($1 > 999999) && ($1 < 10000000) { print $0 }' | sort -un -k1n -o ${DMRIDFILE}
+rm -f /tmp/DMRIds.tmp
+
 curl --fail -L -o ${P25HOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/P25_Hosts.txt --user-agent "${uaStr}"
 curl --fail -L -o ${M17HOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/M17_Hosts.txt --user-agent "${uaStr}"
 curl --fail -L -o ${YSFHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/YSF_Hosts.txt --user-agent "${uaStr}"
