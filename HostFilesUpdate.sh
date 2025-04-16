@@ -147,8 +147,7 @@ else
 fi
 
 # Grab DMR IDs but filter out IDs less than 7 digits (causing collisions with TGs of < 7 digits in "Target" column"
-curl --fail -L -o ${DMRIDFILE} -s https://barrandovhblink.jednoduse.cz/dmrcz/DExtra_Hosts.txt --user-agent "${uaStr}"
-
+curl --fail -L -o ${DMRIDFILE} -s https://barrandovhblink.jednoduse.cz/dmrcz/DMRIds.dat --user-agent "${uaStr}"
 
 curl --fail -L -o ${P25HOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/P25_Hosts.txt --user-agent "${uaStr}"
 curl --fail -L -o ${M17HOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/M17_Hosts.txt --user-agent "${uaStr}"
