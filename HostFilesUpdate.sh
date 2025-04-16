@@ -136,7 +136,6 @@ curl --fail -L -o ${APRSHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/APR
 curl --fail -L -o ${APRSSERVERS} -s https://barrandovhblink.jednoduse.cz/dmrcz/aprs_servers.json --user-agent "${uaStr}"
 curl --fail -L -o ${DCSHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/DCS_Hosts.txt --user-agent "${uaStr}"
 curl --fail -L -o ${DMRHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/DMR_Hosts.txt --user-agent "${uaStr}"
-curl --fail -L -o ${DMRIDFILE} -s https://barrandovhblink.jednoduse.cz/dmrcz/DMRIds.dat --user-agent "${uaStr}"
 if [ -f /etc/hostfiles.nodextra ]; then
   # Move XRFs to DPlus Protocol
   curl --fail -L -o ${DPlusHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/DPlus_WithXRF_Hosts.txt --user-agent "${uaStr}"
@@ -146,7 +145,7 @@ else
   curl --fail -L -o ${DPlusHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/DPlus_Hosts.txt --user-agent "${uaStr}"
   curl --fail -L -o ${DExtraHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/DExtra_Hosts.txt --user-agent "${uaStr}"
 fi
-
+curl --fail -L -o ${DMRIDFILE} -s https://barrandovhblink.jednoduse.cz/dmrcz/DMRIds.dat --user-agent "${uaStr}"
 curl --fail -L -o ${P25HOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/P25_Hosts.txt --user-agent "${uaStr}"
 curl --fail -L -o ${M17HOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/M17_Hosts.txt --user-agent "${uaStr}"
 curl --fail -L -o ${YSFHOSTS} -s https://barrandovhblink.jednoduse.cz/dmrcz/YSF_Hosts.txt --user-agent "${uaStr}"
